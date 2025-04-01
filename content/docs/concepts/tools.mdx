@@ -1,0 +1,272 @@
+---
+title: 工具
+---
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+使LLM通过服务器执行操作
+
+工具是模型上下文协议（MCP）中的一个强大的原语，它使服务器能够向客户端暴露可执行功能。通过工具，LLM可以与外部系统进行交互，执行计算，并在现实世界中执行操作。
+<Callout  type="info">
+  工具被设计为 model-controlled (模型控制)的，这意味着工具由服务器暴露给客户端，目的是AI模型能够自动调用它们（过程中由人授权批准）。
+</Callout>
+## 概述 ##
+MCP中的工具允许服务器暴露可执行函数，这些函数可由客户端调用，并由LLM使用来执行操作。工具的主要方面包括： 
+- 发现：客户端可以通过 tools/list 端点列出可用的工具
+- 调用：使用 tools/call 端点调用工具，服务器在其中执行请求的操作并返回结果
+- 灵活性：工具的范围从简单的计算到复杂的API交互
+
+与资源一样，工具由唯一名称标识，并且可以包含指导其使用的描述。然而，与资源不同的是，工具是动态操作，例如可以修改状态或与外部系统交互。
+## 工具的定义结构 ##
+每个工具都用以下结构定义：
+```js
+{
+  name: string;          // Unique identifier for the tool
+  description?: string;  // Human-readable description
+  inputSchema: {         // JSON Schema for the tool's parameters
+    type: "object",
+    properties: { ... }  // Tool-specific parameters
+  }
+}
+```
+## 工具实现 ##
+以下是在MCP服务器中实现一个基本工具的示例：
+<Tabs items={['TypeScript', 'Python']}>
+  <Tab value="TypeScript">
+  ```js
+  const server = new Server({
+  name: "example-server",
+  version: "1.0.0"
+}, {
+  capabilities: {
+    tools: {}
+  }
+});
+
+// Define available tools
+server.setRequestHandler(ListToolsRequestSchema, async () => {
+  return {
+    tools: [{
+      name: "calculate_sum",
+      description: "Add two numbers together",
+      inputSchema: {
+        type: "object",
+        properties: {
+          a: { type: "number" },
+          b: { type: "number" }
+        },
+        required: ["a", "b"]
+      }
+    }]
+  };
+});
+
+// Handle tool execution
+server.setRequestHandler(CallToolRequestSchema, async (request) => {
+  if (request.params.name === "calculate_sum") {
+    const { a, b } = request.params.arguments;
+    return {
+      content: [
+        {
+          type: "text",
+          text: String(a + b)
+        }
+      ]
+    };
+  }
+  throw new Error("Tool not found");
+});
+  ```
+  </Tab>
+  <Tab value="Python">
+  ```js
+  app = Server("example-server")
+
+@app.list_tools()
+async def list_tools() -> list[types.Tool]:
+    return [
+        types.Tool(
+            name="calculate_sum",
+            description="Add two numbers together",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "a": {"type": "number"},
+                    "b": {"type": "number"}
+                },
+                "required": ["a", "b"]
+            }
+        )
+    ]
+
+@app.call_tool()
+async def call_tool(
+    name: str,
+    arguments: dict
+) -> list[types.TextContent | types.ImageContent | types.EmbeddedResource]:
+    if name == "calculate_sum":
+        a = arguments["a"]
+        b = arguments["b"]
+        result = a + b
+        return [types.TextContent(type="text", text=str(result))]
+    raise ValueError(f"Tool not found: {name}")
+  ```
+  </Tab>
+</Tabs>
+## 工具模式示例 ##
+以下是一些服务器可以提供的工具类型的示例：
+### 系统操作 ###
+与本地系统交互的工具：
+```js
+{
+  name: "execute_command",
+  description: "Run a shell command",
+  inputSchema: {
+    type: "object",
+    properties: {
+      command: { type: "string" },
+      args: { type: "array", items: { type: "string" } }
+    }
+  }
+}
+```
+### API的集成  ###
+包装了外部API的工具：
+```js
+{
+  name: "github_create_issue",
+  description: "Create a GitHub issue",
+  inputSchema: {
+    type: "object",
+    properties: {
+      title: { type: "string" },
+      body: { type: "string" },
+      labels: { type: "array", items: { type: "string" } }
+    }
+  }
+}
+```
+### 数据处理  ###
+转换或分析数据的工具：
+```js
+{
+  name: "analyze_csv",
+  description: "Analyze a CSV file",
+  inputSchema: {
+    type: "object",
+    properties: {
+      filepath: { type: "string" },
+      operations: {
+        type: "array",
+        items: {
+          enum: ["sum", "average", "count"]
+        }
+      }
+    }
+  }
+}
+```
+## 最佳实践 ##
+在实现工具时：
+1. 提供清晰、描述性的名称和描述
+2. 对参数使用详细的JSON模式定义
+3. 在工具描述中包括示例，来说明模型应该如何使用它们
+4. 实现适当的错误处理和验证
+5. 对长期操作使用进度报告
+6. 保持工具操作的单一性和原子性
+7. 记录可能的返回值结构
+8. 实现适当的超时
+9. 考虑对资源密集型操作的速率限制
+10. 使用日志工具，用于调试和监控
+## 安全注意事项 ##
+暴露工具时：
+### 输入验证 ###
+- 根据模式验证所有参数
+- 清理验证文件路径和系统命令
+- 验证URL和外部标识符
+- 检查参数大小和范围
+- 防止命令注入
+### 访问控制 ###
+- 在需要的地方实现身份验证
+- 使用适当的授权检查
+- 审计工具使用情况
+- 速率限制请求
+- 监控访问权限滥用
+### 错误处理 ###
+- 不要将内部错误暴露给客户端
+- 记录与安全相关的错误
+- 适当地处理超时
+- 错误发生后清理资源
+- 验证返回值
+## 工具发现和更新 ##
+MCP支持动态工具发现：
+1. 客户端可以随时列出可用的工具
+2. 服务器可以使用notifications/tools/list_changed通知客户端工具更改
+3. 可以在运行时添加或删除工具
+4. 可以更新工具定义（尽管这应该谨慎地进行）
+## 错误处理 ##
+工具错误应该在结果对象中报告，而不是作为MCP协议级错误报告。这允许LLM发现并潜在地处理错误。当工具遇到错误时：
+1. 将结果中的isError设置为true
+2. 在内容数组中包含错误详细信息
+
+下面是一个正确处理工具错误的例子：
+<Tabs items={['TypeScript', 'Python']}>
+  <Tab value="TypeScript">
+  ```js
+  try {
+  // Tool operation
+  const result = performOperation();
+  return {
+    content: [
+      {
+        type: "text",
+        text: `Operation successful: ${result}`
+      }
+    ]
+  };
+} catch (error) {
+  return {
+    isError: true,
+    content: [
+      {
+        type: "text",
+        text: `Error: ${error.message}`
+      }
+    ]
+  };
+}
+  ```
+    </Tab>
+  <Tab value="Python">
+  ```js
+  try:
+    # Tool operation
+    result = perform_operation()
+    return types.CallToolResult(
+        content=[
+            types.TextContent(
+                type="text",
+                text=f"Operation successful: {result}"
+            )
+        ]
+    )
+except Exception as error:
+    return types.CallToolResult(
+        isError=True,
+        content=[
+            types.TextContent(
+                type="text",
+                text=f"Error: {str(error)}"
+            )
+        ]
+    )
+  ```
+  </Tab>
+</Tabs>
+这种方法允许LLM看到发生了错误，并可能采取纠正措施或请求人工干预。
+## 测试工具 ##
+MCP工具的全面测试策略应包括：
+- 功能测试：通过验证有效输入，并适当处理无效输入来验证工具执行的正确性
+- 集成测试：使用真实的和模拟的依赖来测试工具与外部系统的交互
+- 安全性测试：验证身份验证、授权、输入清理和速率限制
+- 性能测试：检查负载下的行为、超时处理和资源清理
+- 错误处理：确保工具通过MCP协议正确报告错误并清理资源

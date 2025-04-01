@@ -1,0 +1,195 @@
+---
+title: 采样
+---
+让您的服务器向 LLM 请求补全
+
+采样 (Sampling) 是一项强大的 MCP 功能，它允许服务器通过客户端请求 LLM  补全（completions），从而实现复杂的代理行为，同时保持安全性和隐私。
+<Callout  type="info">
+此 MCP 功能在 Claude 桌面客户端 (Claude Desktop client)中尚不支持。
+</Callout>
+## 采样的工作原理 ##
+采样流程包括以下步骤：
+1. 服务器向客户端发送 sampling/createMessage 请求
+2. 客户端审核请求并可以修改它
+3. 客户端从 LLM 采样
+4. 客户端审核补全结果
+5. 客户端将结果返回给服务器
+这种人机协作的设计，确保用户保持对 LLM 所见和所生成内容的控制。
+## 消息格式 ##
+采样请求使用标准化的消息格式：
+```js
+{
+  messages: [
+    {
+      role: "user" | "assistant",
+      content: {
+        type: "text" | "image",
+
+        // For text:
+        text?: string,
+
+        // For images:
+        data?: string,             // base64 encoded
+        mimeType?: string
+      }
+    }
+  ],
+  modelPreferences?: {
+    hints?: [{
+      name?: string                // Suggested model name/family
+    }],
+    costPriority?: number,         // 0-1, importance of minimizing cost
+    speedPriority?: number,        // 0-1, importance of low latency
+    intelligencePriority?: number  // 0-1, importance of capabilities
+  },
+  systemPrompt?: string,
+  includeContext?: "none" | "thisServer" | "allServers",
+  temperature?: number,
+  maxTokens: number,
+  stopSequences?: string[],
+  metadata?: Record<string, unknown>
+}
+```
+## 请求参数 ##
+### 消息 ###
+messages 数组包含要发送到 LLM 的对话历史记录。每条消息都有：
+- role: 消息的角色，值可以是 "user"（用户）或 "assistant"（助手）
+- content: 消息的内容，可以是：
+  - 带有 text 字段的文本内容
+  - 带有 data（base64 编码）和 mimeType 字段的图像内容
+### 模型偏好 ###
+modelPreferences 对象允许服务器指定其模型选择偏好：
+
+- hints: 客户端可用于选择合适模型的模型名称建议数组：
+    - name: 可以匹配完整或部分模型名称的字符串（例如，“claude-3”，“sonnet”）
+    - 客户端可以将提示(hints)映射到来自不同提供商的等效模型
+    - 多个提示(hints)按偏好顺序评估
+- 优先级值（0-1 归一化）：
+    - costPriority: 最小化成本的重要性
+    - speedPriority: 低延迟响应的重要性
+    - intelligencePriority: 高级模型能力的重要性
+
+客户端根据这些偏好及其可用模型进行最终模型选择。
+### 系统提示 ###
+可选的 systemPrompt 字段允许服务器请求特定的系统提示(system prompt)。 客户端可以修改或忽略此提示。
+### 上下文包含 ###
+includeContext 参数指定要包含的 MCP 上下文：
+
+- "none"：无其他上下文
+- "thisServer"：包含来自请求服务器的上下文
+- "allServers"：包含来自所有连接的 MCP 服务器的上下文
+
+客户端控制实际包含哪些上下文。
+### 采样参数 ###
+使用以下方法微调 LLM 采样：
+
+- temperature: 控制随机性（0.0 到 1.0）
+- maxTokens: 要生成的最大令牌(token)数
+- stopSequences: 停止生成的序列数组
+- metadata: 其他特定于提供程序的参数
+## 响应格式 ##
+客户端返回一个补全的结果
+```js
+{
+  model: string,  // Name of the model used
+  stopReason?: "endTurn" | "stopSequence" | "maxTokens" | string,
+  role: "user" | "assistant",
+  content: {
+    type: "text" | "image",
+    text?: string,
+    data?: string,
+    mimeType?: string
+  }
+}
+```
+## 示例请求 ##
+以下是客户端请求采样的示例：
+```js
+{
+  "method": "sampling/createMessage",
+  "params": {
+    "messages": [
+      {
+        "role": "user",
+        "content": {
+          "type": "text",
+          "text": "What files are in the current directory?"
+        }
+      }
+    ],
+    "systemPrompt": "You are a helpful file system assistant.",
+    "includeContext": "thisServer",
+    "maxTokens": 100
+  }
+}
+```
+## 最佳实践 ##
+实现采样时：
+1. 始终提供清晰、结构良好的提示词
+2. 适当地处理文本和图像内容
+3. 设置合理的令牌(token)限制
+4. 通过 includeContext 包含相关上下文
+5. 在使用响应之前对其进行验证
+6. 优雅地处理错误
+7. 考虑对采样请求进行速率限制(rate limiting)
+8. 记录可能出现的采样行为
+9. 使用各种模型参数进行测试
+10. 监控采样成本
+## 人工参与控制 ##
+采样的设计考虑了人为的监督：
+### 对提示词 ###
+- 客户端应向用户显示建议的提示词
+- 用户应该能够修改或拒绝提示词
+- 系统提示词可以被过滤或修改
+- 上下文包含由客户端控制
+### 对补全 ###
+- 客户端应向用户显示补全结果
+- 用户应该能够修改或拒绝补全结果
+- 客户端可以过滤或修改补全结果
+- 用户控制使用哪个模型
+## 安全注意事项 ##
+实施采样时：
+- 验证所有消息内容
+- 清理敏感信息
+- 实施适当的速率限制
+- 监控采样使用情况
+- 加密传输中的数据
+- 处理用户数据隐私
+- 审核采样请求
+- 控制成本风险
+- 实施超时
+- 优雅地处理模型错误
+## 常见模式 ##
+### 智能代理工作流 ###
+采样支持诸如以下代理模式：
+- 阅读和分析资源
+- 根据上下文做出决策
+- 生成结构化数据
+- 处理多步骤任务
+- 提供交互式帮助
+### 上下文管理 ###
+上下文的最佳实践：
+- 仅请求最少必要的上下文
+- 清晰地构建上下文
+- 处理上下文大小限制
+- 根据需要更新上下文
+- 清理过时的上下文
+### 错误处理 ###
+强健的错误处理应满足：
+- 捕获采样失败
+- 处理超时错误
+- 管理速率限制
+- 验证响应
+- 提供回退行为
+- 适当地记录错误
+## 限制 ##
+请注意以下限制：
+- 采样取决于客户端功能
+- 用户控制采样行为
+- 上下文大小有限制
+- 可能存在速率限制
+- 应考虑成本
+- 模型可用性各不相同
+- 响应时间各不相同
+- 并非所有内容类型都支持采样
+

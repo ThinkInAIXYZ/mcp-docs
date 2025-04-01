@@ -1,0 +1,214 @@
+---
+title: 资源
+---
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+将服务器中的数据和内容暴露给 LLM
+
+资源是模型上下文协议（MCP）的核心要素，它允许服务器暴露数据和内容，客户端可以读取这些数据和内容，并将其用作与LLM 交互的上下文。
+<Callout  type="info">
+  资源旨在由应用程序控制，这意味着客户端应用程序可以决定如何以及何时使用这些资源。不同的 MCP 客户端处理资源的方式可能不同。例如：
+  - Claude Desktop 目前要求用户在使用资源前明确选择资源
+  - 其他客户端可能会根据启发式方法自动选择资源
+  - 有些实现甚至允许AI模型本身决定使用哪些资源
+
+  服务器作者在实施资源支持时，应准备好处理任何这些交互模式。为了将数据自动暴露给模型，服务器作者应使用由模型控制的原语，如 “工具”（Tools）。
+</Callout>
+## 概述 
+资源代表 MCP 服务器希望提供给客户端的任何类型的数据。这可能包括
+- 文件内容
+- 数据库记录
+- API 响应
+- 实时系统数据
+- 屏幕截图和图像
+- 日志文件
+- 更多
+
+每个资源都由唯一的 URI 标识，可包含文本或二进制数据。
+## 资源的URI
+使用遵循以下格式的uri来标识资源：
+```js
+[protocol]://[host]/[path]
+```
+例如：
+- file:///home/user/documents/report.pdf
+- postgres://database/customers/schema
+- screen://localhost/display1
+
+协议和路径结构由MCP服务器的实现定义。服务器可以定义自己的自定义URI模式。
+## 资源类型
+资源可以包含两种类型的内容：
+### 文本资源
+文本资源包含UTF-8编码的文本数据。这些适用于：
+- 源代码
+- 配置文件
+- 日志文件
+- JSON / XML数据
+- 纯文本
+### 二进制资源
+二进制资源包含以base64编码的原始二进制数据。这些适用于：
+- 图片
+- pdf文档
+- 音频文件
+- 视频文件
+- 其他非文本格式
+## 资源发现
+客户端可以通过两种主要方法发现可用资源：
+### 直接资源
+服务器通过resources/list endpoint公开一个具体的资源列表。每种资源包括：
+```js
+{
+  uri: string;           // Unique identifier for the resource
+  name: string;          // Human-readable name
+  description?: string;  // Optional description
+  mimeType?: string;     // Optional MIME type
+}
+```
+### 资源模板
+对于动态资源，服务器可以公开URI模板，客户端可以使用它来构造有效的资源URI：
+```js
+{
+  uriTemplate: string;   // URI template following RFC 6570
+  name: string;          // Human-readable name for this type
+  description?: string;  // Optional description
+  mimeType?: string;     // Optional MIME type for all matching resources
+}
+```
+## 读取资源
+为了读取资源，客户端使用资源URI发出resources/read请求。
+
+服务器响应一个资源内容列表：
+```js
+{
+  contents: [
+    {
+      uri: string;        // The URI of the resource
+      mimeType?: string;  // Optional MIME type
+
+      // One of:
+      text?: string;      // For text resources
+      blob?: string;      // For binary resources (base64 encoded)
+    }
+  ]
+}
+```
+<Callout  type="info">
+服务器可以在响应一个resources/read请求时返回多个资源。例如，这可以用于在读取目录时返回目录内的文件列表。
+</Callout>
+## 资源更新
+MCP通过两种机制支持资源的实时更新：
+### 列表的变化
+当可用资源列表发生变化时，服务器可以通过notifications/resources/list_changed通知通知客户端。
+### 内容更改
+客户端可以订阅特定资源的更新：
+1. 客户端对资源URI发送resources/subscribe
+2. 当资源发生变化时，服务器发送notifications/resources/updated
+3. 客户端可以通过resources/read获取最新的内容
+4. 客户端可以通过resources/unsubscribe取消订阅
+## 示例实现 ##
+下面是在MCP服务器中实现资源支持的一个简单示例：
+
+
+<Tabs items={['TypeScript', 'Python']}>
+  <Tab value="TypeScript">
+  ```js
+const server = new Server({
+  name: "example-server",
+  version: "1.0.0"
+}, {
+  capabilities: {
+    resources: {}
+  }
+});
+
+// List available resources
+server.setRequestHandler(ListResourcesRequestSchema, async () => {
+  return {
+    resources: [
+      {
+        uri: "file:///logs/app.log",
+        name: "Application Logs",
+        mimeType: "text/plain"
+      }
+    ]
+  };
+});
+
+// Read resource contents
+server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
+  const uri = request.params.uri;
+
+  if (uri === "file:///logs/app.log") {
+    const logContents = await readLogFile();
+    return {
+      contents: [
+        {
+          uri,
+          mimeType: "text/plain",
+          text: logContents
+        }
+      ]
+    };
+  }
+
+  throw new Error("Resource not found");
+});
+ ```
+  </Tab>
+  <Tab value="Python">
+  ```js
+app = Server("example-server")
+
+@app.list_resources()
+async def list_resources() -> list[types.Resource]:
+    return [
+        types.Resource(
+            uri="file:///logs/app.log",
+            name="Application Logs",
+            mimeType="text/plain"
+        )
+    ]
+
+@app.read_resource()
+async def read_resource(uri: AnyUrl) -> str:
+    if str(uri) == "file:///logs/app.log":
+        log_contents = await read_log_file()
+        return log_contents
+
+    raise ValueError("Resource not found")
+
+# Start server
+async with stdio_server() as streams:
+    await app.run(
+        streams[0],
+        streams[1],
+        app.create_initialization_options()
+    )
+```
+</Tab>
+</Tabs>
+## 最佳实践 ##
+在实施资源支持时：
+1. 使用清晰、描述性的资源名称和URI
+2. 包括有用的描述来指导LLM的理解
+3. 已知的情况下，设置适当的MIME类型
+4. 为动态内容实现资源模板
+5. 对经常变化的资源使用订阅
+6. 用清晰的错误信息优雅地处理错误
+7. 考虑对大型资源列表进行分页
+8. 在适当的时候缓存资源内容
+9. 在处理之前验证URI
+10. 记录您的自定义URI方案
+## 安全注意事项 ##
+在对外暴露资源时：
+- 验证所有资源URI
+- 实施适当的访问控制
+- 清理文件路径以防止目录遍历
+- 谨慎处理二进制数据
+- 考虑对资源读取进行速率限制
+- 审计资源访问
+- 对传输中的敏感数据进行加密
+- 验证MIME类型
+- 为长时间运行的读取设置超时
+- 适当地处理资源清理
+

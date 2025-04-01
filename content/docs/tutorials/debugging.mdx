@@ -1,0 +1,204 @@
+---
+title: 调试
+---
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+调试模型上下文协议（MCP）集成的综合指南
+
+有效的调试对于开发 MCP 服务器或将其与应用程序集成至关重要。本指南涵盖了 MCP 生态系统中可用的调试工具和方法。
+<Callout  type="info">
+  本指南适用于 macOS，其他平台的指南即将推出。
+</Callout>
+## 调试工具概览 ##
+MCP 提供了几种不同级别的调试工具：
+1. MCP 检查器（MCP Inspector）
+- 交互式调试界面
+- 直接服务器测试
+- 有关详细信息，请参阅检查器指南
+2. Claude 桌面开发者工具（Claude Desktop Developer Tools）
+- 集成测试
+- 日志收集
+- Chrome DevTools 集成
+3. 服务器日志记录（Server Logging）
+- 自定义日志记录实现
+- 错误跟踪
+- 性能监控
+## 在 Claude 桌面版中调试 ##
+### 检查服务器状态 ###
+Claude.app 界面提供了基本的服务器状态信息：
+1. 单击![ImaImageZoomge](/claude-desktop-mcp-plug-icon.svg)图标查看：
+- 已连接的服务器
+- 可用的提示词和资源
+2. 单击![ImaImageZoomge](/claude-desktop-mcp-hammer-icon.svg)图标查看：
+- 提供给模型的工具
+### 查看日志 ###
+从 Claude 桌面版查看详细的 MCP 日志：
+```js
+# 实时跟踪日志
+tail -n 20 -F ~/Library/Logs/Claude/mcp*.log
+```
+日志捕获：
+- 服务器连接事件
+- 配置问题
+- 运行时错误
+- 消息交换
+### 使用 Chrome 开发者工具 ###
+在 Claude 桌面版中访问 Chrome 的开发者工具来调查客户端的错误：
+1. 创建一个 developer_settings.json 文件，并将 allowDevTools 设置为 true：
+```js
+echo '{"allowDevTools": true}' > ~/Library/Application\ Support/Claude/developer_settings.json
+```
+2. 打开开发者工具DevTools：Command-Option-Shift-i
+注意：您将看到两个 DevTools 窗口：
+- 主要内容窗口
+- 应用程序标题栏窗口
+
+使用控制台（Console）面板检查客户端错误。
+
+使用网络（Network）面板检查：
+- 消息负载
+- 连接时序
+## 常见问题 ##
+### 工作目录 ###
+当在Claude 桌面版使用MCP服务器时：
+- 通过 claude_desktop_config.json 启动的服务器的工作目录可能未定义（例如 macOS 上的 /），因为 Claude 桌面版可能会从任何位置启动
+- 始终在您的配置和 .env 文件中使用绝对路径，以确保可靠的操作
+- 对于通过命令行直接测试服务器，工作目录将是您运行命令的位置
+
+例如，在 claude_desktop_config.json 中，使用：
+```js
+{
+  "command": "npx",
+  "args": ["-y", "@modelcontextprotocol/server-filesystem", "/Users/username/data"]
+}
+```
+而不是像 ./data 这样的相对路径
+### 环境变量  ###
+MCP 服务器仅自动继承环境变量的子集，例如 USER、HOME 和 PATH。
+
+要覆盖默认变量或提供您自己的变量，您可以在 claude_desktop_config.json 中指定一个 env 键：
+```js
+{
+  "myserver": {
+    "command": "mcp-server-myapp",
+    "env": {
+      "MYAPP_API_KEY": "some_key",
+    }
+  }
+}
+```
+### 服务器初始化  ###
+常见的初始化问题：
+1. 路径问题
+- 不正确的服务器可执行文件路径
+- 缺少所需的文件
+- 权限问题
+- 尝试使用command的绝对路径
+2. 配置错误
+- 无效的 JSON 语法
+- 缺少必需字段
+- 类型不匹配
+3. 环境问题
+- 缺少环境变量
+- 不正确的变量值
+- 权限限制
+### 连接问题  ###
+当服务器无法连接时：
+1. 检查 Claude 桌面版日志
+2. 验证服务器进程是否正在运行
+3. 使用调试器（Inspector） 进行独立测试
+4. 验证协议兼容性
+## 实现日志记录 ##
+### 服务器端日志记录 ###
+当构建使用本地 stdio 传输（Transport,）的服务器时，所有记录到 stderr（标准错误）的消息将自动被主机应用程序（例如 Claude Desktop）捕获。
+<Callout  type="warn">
+本地MCP服务器不应该将消息记录到stdout（标准输出），因为这会干扰协议操作。
+</Callout>
+对于所有传输，您还可以通过发送日志消息通知向客户端提供日志记录：
+<Tabs items={['Python', 'TypeScript']}>
+  <Tab value="Python">
+  ```js
+  server.request_context.session.send_log_message(
+  level="info",
+  data="Server started successfully",
+)
+  ```
+  </Tab>
+  <Tab value="TypeScript">
+  ```js
+  server.sendLoggingMessage({
+  level: "info",
+  data: "Server started successfully",
+});
+  ```
+   </Tab>
+</Tabs>
+要记录的重要事件：
+- 初始化步骤
+- 资源访问
+- 工具执行
+- 错误情况
+- 性能指标
+### 客户端日志记录 ###
+在客户端应用程序中：
+1. 启用调试日志记录
+2. 监控网络流量
+3. 跟踪消息交换
+4. 记录错误状态
+## 调试工作流程 ##
+### 开发周期 ###
+1. 初始开发
+- 使用 Inspector 进行基本测试
+- 实现核心功能
+- 添加日志记录点
+2. 集成测试
+- 在 Claude Desktop 中测试
+- 监控日志
+- 检查错误处理
+### 测试更改 ###
+为了有效地测试更改：
+- 配置更改：重启 Claude Desktop
+- 服务器代码更改：使用 Command-R 重新加载
+- 快速迭代：在开发期间使用 调试器（Inspector）
+## 最佳实践 ##
+### 日志记录策略 ###
+1. 结构化日志记录（Structured Logging）
+- 使用一致的格式
+- 包括上下文
+- 添加时间戳
+- 跟踪请求 ID
+2. 错误处理（Error Handling）
+- 记录堆栈跟踪
+- 包括错误上下文
+- 跟踪错误模式
+- 监控恢复
+3. 性能跟踪（Performance Tracking）
+- 记录操作时序
+- 监控资源使用情况
+- 跟踪消息大小
+- 测量延迟
+### 安全注意事项 ###
+调试时：
+1. 敏感数据（Sensitive Data）
+- 清理日志
+- 保护凭据
+- 屏蔽个人信息
+2. 访问控制（Access Control）
+- 验证权限
+- 检查身份验证
+- 监控访问模式
+## 获取帮助 ##
+遇到问题时：
+1. 第一步
+- 检查服务器日志
+- 使用 调试器（Inspector） 进行测试
+- 审查配置
+- 验证环境
+2. 支持渠道
+- GitHub 问题（GitHub issues）
+- GitHub 讨论（GitHub discussions）
+3. 提供信息
+- 日志摘录
+- 配置文件
+- 重现步骤
+- 环境详情

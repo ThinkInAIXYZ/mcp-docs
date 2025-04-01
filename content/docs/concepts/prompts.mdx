@@ -1,0 +1,392 @@
+---
+title: 提示词
+---
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+创建可重用的提示词模板和工作流
+
+提示词使服务器能够定义可重用的提示模板和工作流，客户机可以轻松地将其呈现给用户和LLM。它们提供了一种强大的方式来标准化和共享常见的LLM交互。
+<Callout  type="info">
+提示词被设计为由用户控制，这意味着它们由服务器暴露给客户端，目的是让用户能够显式地根据自己的需要选择要使用的提示词。
+</Callout>
+## 概述 ##
+MCP中的提示符是预定义的模板，可以：
+- 接受动态参数
+- 包含来自资源的上下文
+- 串联起多次交互
+- 指导特定的工作流程
+- 像UI元素一样的交互界面（如斜杠命令）
+## 提示词结构 ##
+每个提示符定义为：
+```js
+{
+  name: string;              // Unique identifier for the prompt
+  description?: string;      // Human-readable description
+  arguments?: [              // Optional list of arguments
+    {
+      name: string;          // Argument identifier
+      description?: string;  // Argument description
+      required?: boolean;    // Whether argument is required
+    }
+  ]
+}
+```
+## 发现提示词 ##
+客户端可以通过 prompts/list 端点发现提示词:
+```js
+// Request
+{
+  method: "prompts/list"
+}
+
+// Response
+{
+  prompts: [
+    {
+      name: "analyze-code",
+      description: "Analyze code for potential improvements",
+      arguments: [
+        {
+          name: "language",
+          description: "Programming language",
+          required: true
+        }
+      ]
+    }
+  ]
+}
+```
+##  使用提示词 ##
+要使用提示词，客户端发起 prompts/get 请求:
+```js
+// Request
+{
+  method: "prompts/get",
+  params: {
+    name: "analyze-code",
+    arguments: {
+      language: "python"
+    }
+  }
+}
+
+// Response
+{
+  description: "Analyze Python code for potential improvements",
+  messages: [
+    {
+      role: "user",
+      content: {
+        type: "text",
+        text: "Please analyze the following Python code for potential improvements:\n\n```python\ndef calculate_sum(numbers):\n    total = 0\n    for num in numbers:\n        total = total + num\n    return total\n\nresult = calculate_sum([1, 2, 3, 4, 5])\nprint(result)\n```"
+      }
+    }
+  ]
+}
+```
+## 动态提示词 ##
+提示词可以是动态的，并且包含以下：
+### 嵌入式资源上下文 ###
+```js
+{
+  "name": "analyze-project",
+  "description": "Analyze project logs and code",
+  "arguments": [
+    {
+      "name": "timeframe",
+      "description": "Time period to analyze logs",
+      "required": true
+    },
+    {
+      "name": "fileUri",
+      "description": "URI of code file to review",
+      "required": true
+    }
+  ]
+}
+```
+处理 prompts/get 请求时：
+```js
+{
+  "messages": [
+    {
+      "role": "user",
+      "content": {
+        "type": "text",
+        "text": "Analyze these system logs and the code file for any issues:"
+      }
+    },
+    {
+      "role": "user",
+      "content": {
+        "type": "resource",
+        "resource": {
+          "uri": "logs://recent?timeframe=1h",
+          "text": "[2024-03-14 15:32:11] ERROR: Connection timeout in network.py:127\n[2024-03-14 15:32:15] WARN: Retrying connection (attempt 2/3)\n[2024-03-14 15:32:20] ERROR: Max retries exceeded",
+          "mimeType": "text/plain"
+        }
+      }
+    },
+    {
+      "role": "user",
+      "content": {
+        "type": "resource",
+        "resource": {
+          "uri": "file:///path/to/code.py",
+          "text": "def connect_to_service(timeout=30):\n    retries = 3\n    for attempt in range(retries):\n        try:\n            return establish_connection(timeout)\n        except TimeoutError:\n            if attempt == retries - 1:\n                raise\n            time.sleep(5)\n\ndef establish_connection(timeout):\n    # Connection implementation\n    pass",
+          "mimeType": "text/x-python"
+        }
+      }
+    }
+  ]
+}
+```
+### 多步骤工作流 ###
+```js
+const debugWorkflow = {
+  name: "debug-error",
+  async getMessages(error: string) {
+    return [
+      {
+        role: "user",
+        content: {
+          type: "text",
+          text: `Here's an error I'm seeing: ${error}`
+        }
+      },
+      {
+        role: "assistant",
+        content: {
+          type: "text",
+          text: "I'll help analyze this error. What have you tried so far?"
+        }
+      },
+      {
+        role: "user",
+        content: {
+          type: "text",
+          text: "I've tried restarting the service, but the error persists."
+        }
+      }
+    ];
+  }
+};
+```
+## 示例实现 ##
+下面是在MCP服务器中实现提示词的一个完整示例：
+<Tabs items={['TypeScript', 'Python']}>
+  <Tab value="TypeScript">
+  ```js
+import { Server } from "@modelcontextprotocol/sdk/server";
+import {
+  ListPromptsRequestSchema,
+  GetPromptRequestSchema
+} from "@modelcontextprotocol/sdk/types";
+
+const PROMPTS = {
+  "git-commit": {
+    name: "git-commit",
+    description: "Generate a Git commit message",
+    arguments: [
+      {
+        name: "changes",
+        description: "Git diff or description of changes",
+        required: true
+      }
+    ]
+  },
+  "explain-code": {
+    name: "explain-code",
+    description: "Explain how code works",
+    arguments: [
+      {
+        name: "code",
+        description: "Code to explain",
+        required: true
+      },
+      {
+        name: "language",
+        description: "Programming language",
+        required: false
+      }
+    ]
+  }
+};
+
+const server = new Server({
+  name: "example-prompts-server",
+  version: "1.0.0"
+}, {
+  capabilities: {
+    prompts: {}
+  }
+});
+
+// List available prompts
+server.setRequestHandler(ListPromptsRequestSchema, async () => {
+  return {
+    prompts: Object.values(PROMPTS)
+  };
+});
+
+// Get specific prompt
+server.setRequestHandler(GetPromptRequestSchema, async (request) => {
+  const prompt = PROMPTS[request.params.name];
+  if (!prompt) {
+    throw new Error(`Prompt not found: ${request.params.name}`);
+  }
+
+  if (request.params.name === "git-commit") {
+    return {
+      messages: [
+        {
+          role: "user",
+          content: {
+            type: "text",
+            text: `Generate a concise but descriptive commit message for these changes:\n\n${request.params.arguments?.changes}`
+          }
+        }
+      ]
+    };
+  }
+
+  if (request.params.name === "explain-code") {
+    const language = request.params.arguments?.language || "Unknown";
+    return {
+      messages: [
+        {
+          role: "user",
+          content: {
+            type: "text",
+            text: `Explain how this ${language} code works:\n\n${request.params.arguments?.code}`
+          }
+        }
+      ]
+    };
+  }
+
+  throw new Error("Prompt implementation not found");
+});
+  ```
+    </Tab>
+  <Tab value="Python">
+  ```js
+  from mcp.server import Server
+import mcp.types as types
+
+# Define available prompts
+PROMPTS = {
+    "git-commit": types.Prompt(
+        name="git-commit",
+        description="Generate a Git commit message",
+        arguments=[
+            types.PromptArgument(
+                name="changes",
+                description="Git diff or description of changes",
+                required=True
+            )
+        ],
+    ),
+    "explain-code": types.Prompt(
+        name="explain-code",
+        description="Explain how code works",
+        arguments=[
+            types.PromptArgument(
+                name="code",
+                description="Code to explain",
+                required=True
+            ),
+            types.PromptArgument(
+                name="language",
+                description="Programming language",
+                required=False
+            )
+        ],
+    )
+}
+
+# Initialize server
+app = Server("example-prompts-server")
+
+@app.list_prompts()
+async def list_prompts() -> list[types.Prompt]:
+    return list(PROMPTS.values())
+
+@app.get_prompt()
+async def get_prompt(
+    name: str, arguments: dict[str, str] | None = None
+) -> types.GetPromptResult:
+    if name not in PROMPTS:
+        raise ValueError(f"Prompt not found: {name}")
+
+    if name == "git-commit":
+        changes = arguments.get("changes") if arguments else ""
+        return types.GetPromptResult(
+            messages=[
+                types.PromptMessage(
+                    role="user",
+                    content=types.TextContent(
+                        type="text",
+                        text=f"Generate a concise but descriptive commit message "
+                        f"for these changes:\n\n{changes}"
+                    )
+                )
+            ]
+        )
+
+    if name == "explain-code":
+        code = arguments.get("code") if arguments else ""
+        language = arguments.get("language", "Unknown") if arguments else "Unknown"
+        return types.GetPromptResult(
+            messages=[
+                types.PromptMessage(
+                    role="user",
+                    content=types.TextContent(
+                        type="text",
+                        text=f"Explain how this {language} code works:\n\n{code}"
+                    )
+                )
+            ]
+        )
+
+    raise ValueError("Prompt implementation not found")
+  ```
+  </Tab>
+</Tabs>
+## 最佳实践 ##
+在执行提示词时：
+1. 使用清晰、描述性的提示词名称
+2. 为提示词和参数提供详细的描述
+3. 验证所有必需的参数
+4. 优雅地处理缺失的参数
+5. 考虑对提示模板进行版本控制
+6. 在适当的时候缓存动态内容
+7. 实现错误处理
+8. 用文档记录需要的参数格式
+9. 考虑提示组合性
+10. 使用各种输入测试提示词
+## 用户界面集成 ##
+提示词可以在客户端UI中以如下方式展示：
+- 斜线指令
+- 快捷操作
+- 上下文菜单项
+- 命令面板项
+- 指导工作流
+- 互动的形式
+## 更新和更改 ##
+服务器可以将提示词的更改通知客户端：
+1. 服务器功能：prompts.listChanged
+2. 通知:notifications/prompts/list_changed
+3. 客户端重新获取提示词列表
+## 安全注意事项 ##
+在执行提示词时：
+- 验证所有参数
+- 清理验证用户输入
+- 考虑限速
+- 实现访问控制
+- 审计提示词的使用
+- 妥善处理敏感资料
+- 验证生成的内容
+- 实现超时
+- 考虑提示词注入攻击风险
+- 用文档记录安全要求

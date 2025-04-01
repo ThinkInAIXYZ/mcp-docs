@@ -1,5 +1,203 @@
 ---
 title: MCP客户端示例
-description: MCP客户端示例
 ---
+支持 MCP 集成的应用程序列表
+
+本页概述了支持模型上下文协议（Model Context Protocol，MCP）的应用程序。每个客户端可能支持不同的 MCP 功能，从而实现与 MCP 服务器的不同集成级别。
+## 客户端详情 ##
+### Claude 桌面应用（Claude Desktop App） ###
+Claude 桌面应用程序提供对 MCP 的全面支持，从而能够与本地工具和数据源进行深度集成。
+主要功能：
+- 完全支持资源（Resources），允许附加本地文件和数据
+- 支持提示词模板（prompt templates）
+- 工具集成（Tool integration），用于执行命令和脚本
+- 本地服务器连接（Local server connections），以增强隐私和安全性
+<Callout  type="info">
+注意：Claude.ai Web 应用程序当前不支持 MCP，MCP 功能仅在桌面应用程序中可用。
+</Callout>
+### Claude Code ###
+Claude Code是一个来自Anthropic的交互式代理编码工具，可以帮助您通过自然语言命令更快地编码。它支持MCP的提示和工具集成，也可以作为MCP服务器与其他客户端集成。
+
+主要功能:
+- 对MCP服务器工具和提示的支持
+- 通过MCP服务器提供自己的工具，用于与其他MCP客户端集成
+### 5ire ###
+[5ire](https://github.com/nanbingxyz/5ire) 是一款开源的跨平台桌面 AI 助手，它通过 MCP 服务器支持工具（Tools）。
+主要功能：
+- 可以快速启用和禁用内置的 MCP 服务器。
+- 用户可以通过修改配置文件来添加更多服务器。
+- 它是开源且用户友好的，适合初学者。
+- 未来将不断改进对 MCP 的支持。
+### BeeAI Framework ###
+[BeeAI 框架（BeeAI Framework）](https://i-am-bee.github.io/beeai-framework) 是一个开源框架，用于大规模构建、部署和服务强大的代理工作流。该框架包括 MCP 工具（MCP Tool），这是一个原生功能，可简化将 MCP 服务器集成到代理工作流中的过程。
+主要功能：
+- 将 MCP 工具无缝集成到代理工作流中。
+- 从连接的 MCP 客户端快速实例化框架原生工具。
+- 计划未来支持代理 MCP 功能。
+
+了解更多：
+[在代理工作流中使用 MCP 工具的示例](https://i-am-bee.github.io/beeai-framework/#/typescript/tools?id=using-the-mcptool-class)
+### Cline ###
+Cline 是 VS Code 中的一个自主编码代理，它可以编辑文件、运行命令、使用浏览器等等——每一步都需要你的许可。
+
+主要功能：
+- 通过自然语言创建和添加工具（例如，“添加一个搜索网络的工具”）
+- 通过 ~/Documents/Cline/MCP 目录与他人共享 Cline 创建的自定义 MCP 服务器
+- 显示配置的 MCP 服务器及其工具、资源以及任何错误日志
+### Continue ###
+[Continue](https://github.com/continuedev/continue) 是一个开源的 AI 代码助手，内置支持所有 MCP 功能。
+
+主要功能
+- 键入“@”以提及 MCP 资源（Resources）
+- 提示词模板（Prompt templates）显示为斜杠命令
+- 直接在聊天中使用内置工具和 MCP 工具
+- 支持 VS Code 和 JetBrains IDE，以及任何 LLM
+### Cursor ###
+[Cursor](https://docs.cursor.com/advanced/model-context-protocol) 是一款 AI 代码编辑器。
+
+主要功能：
+- 在 Cursor Composer 中支持 MCP 工具（Tools）
+- 支持 STDIO 和 SSE
+### Emacs Mcp ###
+[Emacs Mcp](https://github.com/lizqwerscott/mcp.el)是一个 Emacs 客户端，旨在与 MCP 服务器连接，实现无缝连接和交互。 它为 AI 插件（如 gptel 和 llm）提供 MCP 工具调用支持，遵循 Emacs 的标准工具调用格式。 这种集成增强了 Emacs 生态系统中 AI 工具的功能。
+主要功能：
+- 为 Emacs 提供 MCP 工具支持。
+### fast-agent ###
+[fast-agent](https://github.com/evalstate/fast-agent)是一个Python代理框架，对创建代理和工作流提供简单的声明性支持，对Anthropic和OpenAI模型提供完整的多模态支持。
+
+主要功能:
+- PDF和图像支持，基于MCP原生类型
+- 用于开发和诊断代理应用程序的交互式前端，包括直通和回放模拟器
+- 内置支持“构建有效代理”工作流。
+- 将agent部署为MCP服务器
+### Genkit ###
+[Genkit](https://github.com/firebase/genkit)是一个跨语言SDK，用于构建GenAI功能并将其集成到应用程序中。genkitx-mcp插件允许作为客户端使用MCP服务器，或者从Genkit工具和提示词创建MCP服务器。
+
+主要功能:
+- 客户端对工具和提示词的支持（部分支持的资源）
+- 支持Genkit的Dev UI在线演示平台的丰富发现
+- 与Genkit现有工具和提示符的无缝互操作性
+- 工作跨越顶级供应商的各种各样的GenAI模型
+### GenAIScript ###
+使用 [GenAIScript](https://microsoft.github.io/genaiscript/)（在 JavaScript 中）以编程方式为 LLM 组装 prompts。在 JavaScript 中编排 LLM、tools 和 resources。
+主要功能：
+- JavaScript 工具箱用于处理提示
+- 便于使用和提高生产力的抽象层
+- 无缝集成 Visual Studio Code
+### Goose ###
+[Goose](https://github.com/block/goose) 是一个开源 AI 代理，通过自动化编码任务来增强你的软件开发能力。
+主要功能：
+- 通过工具（Tools）向 Goose 公开 MCP 功能。
+- 可以直接通过 [extensions directory](https://block.github.io/goose/v1/extensions/)、CLI 或 UI 安装 MCP。
+- Goose 允许你通过[构建自己的 MCP 服务器](https://block.github.io/goose/docs/tutorials/custom-extensions) 来扩展其功能。
+- 包含内置工具，用于开发、Web 抓取、自动化、内存以及与 JetBrains 和 Google Drive 集成。
+### LibreChat ###
+[LibreChat](https://github.com/danny-avila/LibreChat) 是一个开源、可定制的 AI 聊天 UI，支持多个 AI 提供商，现在包括 MCP 集成。
+主要功能：
+- 通过 MCP 服务器扩展当前的工具生态系统，包括[Code Interpreter](https://www.librechat.ai/docs/features/code_interpreter) 和图像生成工具
+- 使用来自顶级提供商的各种 LLM，将工具添加到可定制的代理（Agents）
+- 开源且可自托管，具有安全的多用户支持
+- 未来的路线图包括扩展的 MCP 功能支持
+### mcp-agent ###
+[mcp-agent](https://github.com/lastmile-ai/mcp-agent) 是一个简单的、可组合的框架，用于使用模型上下文协议（Model Context Protocol）构建代理。
+主要功能：
+- 自动连接管理 MCP 服务器。
+- 将来自多个服务器的工具（Tools）公开给 LLM。
+- 实现了[构建有效代理](https://www.anthropic.com/research/building-effective-agents) 中定义的每个模式。
+- 支持工作流暂停/恢复信号，例如等待人工反馈。
+### Microsoft Copilot Studio ###
+[Microsoft Copilot Studio](https://learn.microsoft.com/en-us/microsoft-copilot-studio/agent-extend-action-mcp)是一个强大的SaaS平台，旨在构建自定义AI驱动的应用程序和智能代理，使开发人员能够创建、部署和管理复杂的AI解决方案。
+主要功能:
+- 支持MCP工具
+- 用MCP服务器扩展Copilot Studio代理
+- 利用Microsoft统一的、受治理的和安全的API管理解决方案
+### oterm ###
+[oterm](https://github.com/ggozad/oterm)是Ollama的终端客户端，允许用户创建聊天/代理。
+主要功能:
+- 通过Ollama连接工具，支持多个可完全定制的聊天会话。
+- 支持MCP工具。
+### Roo Code ###
+[Roo Code](https://roocode.com/) 通过 MCP 实现 AI 编码辅助。
+主要功能：
+- 支持 MCP 工具（Tools）和资源（Resources）
+- 与开发工作流程集成
+- 可扩展的 AI 功能
+### Sourcegraph Cody ###
+[Cody](https://openctx.org/docs/providers/modelcontextprotocol) 是 Sourcegraph 的 AI 编码助手，它通过 OpenCTX 实现 MCP。
+主要功能：
+- 支持 MCP 资源（Resources）
+- 与 Sourcegraph 的代码智能集成
+- 使用 OpenCTX 作为抽象层
+- 计划未来支持其他 MCP 功能
+### SpinAI ###
+[SpinAI](https://spinai.dev/) 是一个开源 TypeScript 框架，用于构建可观察的 AI 代理。 该框架提供原生 MCP 兼容性，允许代理与 MCP 服务器和工具无缝集成。
+主要功能：
+- AI 代理的内置 MCP 兼容性
+- 开源 TypeScript 框架
+- 可观察的代理架构
+- 对 MCP 工具集成的原生支持
+### Superinterface ###
+[Superinterface](https://superinterface.ai/) 是 AI 基础设施和开发人员平台，用于构建应用内 AI 助手，支持 MCP 、交互式组件、客户端函数调用等。
+主要功能：
+- 在通过 React 组件或脚本标记嵌入的助手中，使用来自 MCP 服务器的工具（Tools）
+- SSE 传输支持
+- 使用来自任何 AI 提供商（OpenAI、Anthropic、Ollama 等）的任何 AI 模型
+### TheiaAI/TheiaIDE ###
+[Theia AI](https://eclipsesource.com/blogs/2024/10/07/introducing-theia-ai/) 是一个用于构建 AI 增强工具和 IDE 的框架。AI 驱动的 Theia IDE 是一个基于 Theia AI 构建的开放且灵活的开发环境。
+主要功能：
+- 工具集成：Theia AI 使 AI 代理（包括 Theia IDE 中的代理）能够利用 MCP 服务器进行无缝工具交互。
+- 可定制的提示词（Prompts）：Theia IDE 允许用户定义和调整提示词，动态集成 MCP 服务器以实现定制的工作流程。
+- 自定义代理（agents）：Theia IDE 支持利用 MCP 功能创建自定义代理，使用户能够动态设计专用工作流程。
+Theia AI 和 Theia IDE 的 MCP 集成为用户提供了灵活性，使它们成为探索和调整 MCP 的强大平台。
+了解更多：
+- [Theia IDE 和 Theia AI MCP 公告](https://eclipsesource.com/blogs/2024/12/19/theia-ide-and-theia-ai-support-mcp/)
+- [下载 AI 驱动的 Theia IDE](https://theia-ide.org/)
+### Windsurf Editor ###
+[Windsurf Editor](https://codeium.com/windsurf) 是一款代理 IDE，将 AI 辅助与开发人员工作流程相结合。 它具有创新的 AI Flow 系统，可在保持开发人员控制同时，实现协作和独立的 AI 交互。
+主要功能：
+- 用于人机协作的革命性 AI Flow 范例
+- 智能代码生成和理解
+- 具有多模型支持的丰富开发工具
+### Witsy ###
+[Witsy](https://github.com/nbonamy/witsy)是一个人工智能桌面助手，支持Anthropic模型和作为LLM工具的MCP服务器。
+主要功能:
+- 支持多个MCP服务器
+- 用于执行命令和脚本的工具集成
+- 本地服务器连接，增强隐私和安全性
+- 从Smithery.ai易于安装
+- 开源，可用于macOS， Windows和Linux
+### Zed ###
+[Zed](https://zed.dev/docs/assistant/model-context-protocol) 是一款高性能代码编辑器，具有内置 MCP 支持，专注于提示词模板（prompt templates）和工具集成。
+主要功能：
+- 提示词模板（Prompt templates）在编辑器中显示为斜杠命令
+- 工具集成，用于增强编码工作流程
+- 与编辑器功能和工作区上下文紧密集成
+- 不支持 MCP 资源
+### OpenSumi ###
+[OpenSumi](https://github.com/opensumi/core) 是一个可以帮助您快速构建 AI Native IDE 产品的框架。
+主要功能：
+- 在 OpenSumi 中支持 MCP 工具（Tools）
+- 支持内置 IDE MCP 服务器和自定义 MCP 服务器
+### Daydreams ###
+[Daydreams](https://github.com/daydreamsai/daydreams) 是一个用于在链上执行任何操作的生成式代理框架
+主要功能：
+- 在配置中支持 MCP 服务器（Servers）
+- 公开 MCP 客户端
+### Apify MCP Tester ###
+[Apify MCP Tester](https://github.com/apify/tester-mcp-client)是一个使用服务器发送事件（server - sent Events， SSE）连接到任何MCP服务器的开源客户端。它是一个独立的Apify Actor，设计用于在SSE上测试MCP服务器，支持授权标头。它使用纯JavaScript（老派风格），并托管在Apify上，允许您无需任何设置即可运行它。
+主要功能:
+- 通过SSE连接到任意MCP服务器。
+- 与[Apify MCP服务器](https://apify.com/apify/actors-mcp-server)一起工作，与一个或多个[Apify actor](https://apify.com/store)进行交互。
+- 动态地利用基于上下文和用户查询的工具（如果服务器支持）。
+## 向您的应用程序添加 MCP 支持 ##
+如果您已将 MCP 支持添加到您的应用程序，我们鼓励您提交拉取请求以将其添加到此列表中。 MCP 集成可以为您的用户提供强大的上下文 AI 功能，并使您的应用程序成为不断增长的 MCP 生态系统的一部分。
+添加 MCP 支持的好处：
+- 使用户能够带来自己的上下文和工具（Tools）
+- 加入不断增长的、可互操作的 AI 应用程序生态系统
+- 为用户提供灵活的集成选项
+- 支持本地优先的 AI 工作流程
+
+要开始在您的应用程序中实现 MCP，请查看我们的 [Python](https://github.com/modelcontextprotocol/python-sdk) 或 [TypeScript SDK 文档](https://github.com/modelcontextprotocol/typescript-sdk)
+## 更新和更正 ##
+此列表由社区维护。 如果您发现任何不准确之处或想要更新有关您的应用程序中 MCP 支持的信息，请提交拉取请求或在我们的[文档存储库](https://github.com/modelcontextprotocol/docs/issues)中新开一个问题。
 
