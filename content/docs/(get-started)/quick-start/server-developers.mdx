@@ -14,9 +14,9 @@ description: 快速开始 - 服务器开发者
 ![ImaImageZoomge](/server-developers-01.png)
 ![ImaImageZoomge](/server-developers-02.png)
 
-```
+
 服务可以连接任何客户端。为了简单起见，我们在这里选择了Claude作为桌面，但我们也有关于[建立自己的client](https://mcp.thinkinai.xyz/docs/quick-start/client-developers)建立自己的client的指南，以及[这里的其他客户列表](https://mcp.thinkinai.xyz/docs/example-clients)。
-```
+
 
 ```
 为什么选择Claude for DeskTop而不是Claude.ai？
@@ -29,3 +29,83 @@ MCP服务器可以提供三种主要功能：
     2. **Tools**：LLM可以调用的函数（经用户批准）
     3. **Prompts**：帮助用户完成特定任务的预先编写的模板
 本教程将主要关注工具。
+
+### 基于Java
+这是一个基于Spring AI MCP自动配置和引导启动器的快速入门演示。要了解如何手动创建同步和异步MCP服务器，请参阅[Java SDK服务器](https://modelcontextprotocol.io/sdk/java/mcp-server)文档。
+让我们开始构建一个天气服务！
+    ● [你可以在这里找到我们将要构建的完整代码](https://github.com/spring-projects/spring-ai-examples/tree/main/model-context-protocol/weather/starter-stdio-server)【MCP官方代码，支持查询美国天气情况】。
+    ● [这里的代码也可以](https://github.com/weishuai8888/spring-ai-examples)【fork官方代码后调整了逻辑，支持查询全世界的天气情况】
+有关更多信息，请参阅[MCP Server Boot Starter](https://docs.spring.io/spring-ai/reference/api/mcp/mcp-server-boot-starter-docs.html)参考文档。有关手动MCP服务器实现，请参阅[MCP Server Java SDK文档](https://modelcontextprotocol.io/sdk/java/mcp-server)。
+
+#### 系统要求
+~
+    ● 已安装Java 17或更高版本
+    ● [Spring Boot 3.3.x](https://docs.spring.io/spring-boot/installing.html) 或更高版本
+
+#### 设置你的环境变量
+使用 [Spring Initizer](https://start.spring.io) 启动项目。
+你需要添加以下的依赖项：
+<Tabs items={['Maven', 'Gradle']}>
+    <Tab value="Maven">
+        ```xml
+        <dependencies>
+            <dependency>
+                <groupId>org.springframework.ai</groupId>
+                <artifactId>spring-ai-starter-mcp-server</artifactId>
+            </dependency>
+
+            <dependency>
+                <groupId>org.springframework</groupId>
+                <artifactId>spring-web</artifactId>
+            </dependency>
+        </dependencies>
+        ```
+    </Tab>
+    <Tab value='Gradle'>
+        ```xml
+        dependencies {
+        implementation platform("org.springframework.ai:spring-ai-starter-mcp-server")
+        implementation platform("org.springframework:spring-web")
+        }
+        ```
+    </Tab>
+</Tabs>
+
+然后通过设置应用程序属性来配置应用程序
+<Tabs items={['application.yml', 'application.properties']}>
+    <Tab value="application.yml">
+        ```yaml
+        logging:
+          pattern:
+            console:
+        spring:
+          main:
+            banner-mode: off
+        ```
+    </Tab>
+    <Tab value="application.properties">
+        ```properties
+        logging.pattern.console=
+        spring.main.banner-mode=off
+        ```
+    </Tab>
+</Tabs>
+
+[服务器配置属性](https://docs.spring.io/spring-ai/reference/api/mcp/mcp-server-boot-starter-docs.html#_configuration_properties)记录了所有可用的属性。现在，让我们开始构建您的服务器。
+
+# 构建你的服务器
+## 天气服务
+
+
+
+
+
+
+
+
+
+
+
+
+
+
